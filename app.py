@@ -3,26 +3,46 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 import time
+import sys
+import logging
 from option_chain import fetch_option_chain
 from ai_analysis import get_trading_opinion
 from data_store import save_opinion, get_historical_opinions
 import traceback
 
-st.set_page_config(page_title="Nifty50 Option Chain Analysis", layout="wide")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+st.set_page_config(
+    page_title="Nifty50 Option Chain Analysis",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 def create_option_chain_table(df):
     if df is None or df.empty:
         return None
 
-    fig = go.Figure(data=[go.Table(
-        header=dict(values=list(df.columns),
-                   fill_color='paleturquoise',
-                   align='left'),
-        cells=dict(values=[df[col] for col in df.columns],
-                   fill_color='lavender',
-                   align='left'))
-    ])
-    return fig
+    try:
+        fig = go.Figure(data=[go.Table(
+            header=dict(values=list(df.columns),
+                       fill_color='paleturquoise',
+                       align='left'),
+            cells=dict(values=[df[col] for col in df.columns],
+                       fill_color='lavender',
+                       align='left'))
+        ])
+        return fig
+    except Exception as e:
+        logger.error(f"Error creating option chain table: {str(e)}")
+        return None
 
 def display_metrics(df):
     if df is None or df.empty:

@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: nifty50-analysis
+    env: python
+    buildCommand: pip install -r requirements-render.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    plan: free
