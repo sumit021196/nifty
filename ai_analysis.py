@@ -6,6 +6,64 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def suggest_option_strategy(spot_price, max_pain, pcr, direction):
+    """
+    Suggest specific option trading strategies based on the analysis
+    """
+    atm_strike = round(spot_price / 50) * 50  # Round to nearest 50
+    strategies = []
+
+    if direction == "BULLISH":
+        strategies.append({
+            "type": "CALL",
+            "action": "BUY",
+            "strike": atm_strike,
+            "target": f"Exit at {round(atm_strike * 1.01)} or 30% profit",
+            "stop_loss": f"Exit at {round(atm_strike * 0.995)} or 15% loss",
+            "rationale": "Bullish momentum expected"
+        })
+        strategies.append({
+            "type": "PUT",
+            "action": "SELL",
+            "strike": round(atm_strike * 0.98),
+            "target": "Exit at 50% premium decay",
+            "stop_loss": f"Exit if spot breaks below {round(atm_strike * 0.97)}",
+            "rationale": "Premium collection in bullish trend"
+        })
+    elif direction == "BEARISH":
+        strategies.append({
+            "type": "PUT",
+            "action": "BUY",
+            "strike": atm_strike,
+            "target": f"Exit at {round(atm_strike * 0.99)} or 30% profit",
+            "stop_loss": f"Exit at {round(atm_strike * 1.005)} or 15% loss",
+            "rationale": "Bearish momentum expected"
+        })
+        strategies.append({
+            "type": "CALL",
+            "action": "SELL",
+            "strike": round(atm_strike * 1.02),
+            "target": "Exit at 50% premium decay",
+            "stop_loss": f"Exit if spot breaks above {round(atm_strike * 1.03)}",
+            "rationale": "Premium collection in bearish trend"
+        })
+    else:  # NEUTRAL
+        strategies.append({
+            "type": "IRON CONDOR",
+            "action": "SELL",
+            "strikes": {
+                "sell_put": round(atm_strike * 0.98),
+                "buy_put": round(atm_strike * 0.97),
+                "sell_call": round(atm_strike * 1.02),
+                "buy_call": round(atm_strike * 1.03)
+            },
+            "target": "Exit at 50% premium decay",
+            "stop_loss": "Exit if any short strike breached",
+            "rationale": "Range-bound movement expected"
+        })
+
+    return strategies
+
 def get_trading_opinion(option_chain_data):
     """
     Generate trading opinion based on option chain metrics using rule-based analysis
@@ -70,11 +128,15 @@ def get_trading_opinion(option_chain_data):
         # Cap confidence between 0 and 1
         confidence = min(max(confidence, 0), 1)
 
+        # Get option strategies
+        strategies = suggest_option_strategy(spot_price, max_pain, pcr, direction)
+
         analysis = {
             "recommendation": recommendation,
             "confidence": confidence,
             "direction": direction,
             "key_factors": key_factors,
+            "suggested_strategies": strategies,
             "timestamp": datetime.now().isoformat()
         }
 
@@ -87,5 +149,6 @@ def get_trading_opinion(option_chain_data):
             "confidence": 0,
             "direction": "NEUTRAL",
             "key_factors": ["Error occurred during analysis"],
+            "suggested_strategies": [],
             "timestamp": datetime.now().isoformat()
         }
