@@ -10,13 +10,13 @@ def fetch_option_chain():
     try:
         # Fetch option chain data
         option_chain = nse_optionchain_scrapper("NIFTY")
-        
+
         if not option_chain:
             raise Exception("Failed to fetch option chain data")
-        
+
         # Extract relevant data
         records = []
-        
+
         for strike in option_chain['records']['data']:
             if 'CE' in strike and 'PE' in strike:
                 record = {
@@ -29,25 +29,27 @@ def fetch_option_chain():
                     'PE_LTP': strike['PE']['lastPrice']
                 }
                 records.append(record)
-        
+
         df = pd.DataFrame(records)
-        
+
         # Calculate additional metrics
         total_ce_oi = df['CE_OI'].sum()
         total_pe_oi = df['PE_OI'].sum()
         df['PCR'] = total_pe_oi / total_ce_oi if total_ce_oi > 0 else 0
-        
-        # Calculate Max Pain
-        df['CE_Pain'] = df['CE_OI'] * abs(df['Strike'] - option_chain['records']['underlyingValue'])
-        df['PE_Pain'] = df['PE_OI'] * abs(df['Strike'] - option_chain['records']['underlyingValue'])
-        max_pain_strike = df.loc[df['CE_Pain'] + df['PE_Pain'].idxmin(), 'Strike']
+
+        # Calculate Max Pain - Fixed calculation
+        spot_price = option_chain['records']['underlyingValue']
+        df['CE_Pain'] = df['CE_OI'] * abs(df['Strike'] - spot_price)
+        df['PE_Pain'] = df['PE_OI'] * abs(df['Strike'] - spot_price)
+        df['Total_Pain'] = df['CE_Pain'] + df['PE_Pain']
+        max_pain_strike = df.loc[df['Total_Pain'].idxmin(), 'Strike']
         df['MaxPain'] = max_pain_strike
-        
+
         # Add spot price
-        df['SpotPrice'] = option_chain['records']['underlyingValue']
-        
+        df['SpotPrice'] = spot_price
+
         return df
-        
+
     except Exception as e:
         logging.error(f"Error fetching option chain data: {str(e)}")
         raise
